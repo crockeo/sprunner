@@ -21,7 +21,7 @@
         };
       in
         rec {
-          packages = {
+          packages = rec {
             depShell = pkgs.mkShell {
               packages = [
                 pkgs.gomod2nix
@@ -33,9 +33,9 @@
               modules = ./gomod2nix.toml;
               src = ./.;
             };
-          };
 
-          defaultPackage = packages.server;
+            default = server;
+          };
         }
     );
 }
