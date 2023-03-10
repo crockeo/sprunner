@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/gdamore/tcell"
 	"github.com/google/shlex"
@@ -82,6 +83,7 @@ type Subscreen struct {
 	screen tcell.Screen
 	count  int
 	index  int
+	lines []string
 }
 
 func NewSubscreen(screen tcell.Screen, count int, index int) *Subscreen {
@@ -89,32 +91,41 @@ func NewSubscreen(screen tcell.Screen, count int, index int) *Subscreen {
 		screen: screen,
 		count:  count,
 		index:  index,
+		lines: []string{},
 	}
 }
 
 // Write implements `io.Writer` and simulates the experience
 // of writing to a terminal's stdout or stderr.
 func (s *Subscreen) Write(bytes []byte) (n int, err error) {
-	startX, _, _, _ := s.Subregion()
-	runes := []rune(string(bytes))
+	startX, startY, endX, endY := s.Subregion()
+	width := endX - startX
+	height := endY - startY
 
-	x := 0
-	y := 0
-	for _, r := range runes {
-		if r == '\n' {
-			y = 0
-			y += 1
-			continue
+	// TODO: remove lines at some point :)
+	newLines := strings.Split(string(bytes), "\n")
+	if len(s.lines) == 0 {
+		s.lines = append(s.lines, newLines[0])
+	} else {
+		s.lines[len(s.lines)-1] += newLines[0]
+	}
+	newLines = newLines[1:]
+	s.lines = append(s.lines, newLines...)
+
+	if len(s.lines) > height {
+		s.lines = s.lines[len(s.lines)-height-1:]
+	}
+
+	for row, line := range s.lines {
+		for col, r := range line {
+			if col >= width {
+				break
+			}
+			s.screen.SetContent(startX + col, startY + row, r, []rune{}, tcell.StyleDefault)
 		}
-		s.screen.SetContent(startX + x, y, r, []rune{}, tcell.StyleDefault)
-		x += 1
 	}
 	s.screen.Show()
-
 	return len(bytes), nil
-	// TODO: this assumes everything is using UTF8,
-	// but that might not be true?
-	// runes := []rune(string(bytes))
 }
 
 // Subregion returns the top-left and bottom-right corners as (x, y) coordinates
