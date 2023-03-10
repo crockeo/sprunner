@@ -29,7 +29,7 @@ func main() {
 	}
 
 	if err := mainImpl(os.Args[1:]); err != nil {
-		log.Fatal(err)
+		fmt.Println(err.Error())
 	}
 }
 
