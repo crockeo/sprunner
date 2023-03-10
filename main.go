@@ -2,10 +2,13 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"runtime/pprof"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell"
 	"github.com/google/shlex"
@@ -13,6 +16,18 @@ import (
 )
 
 func main() {
+	if os.Getenv("PPROF") != "" {
+		filename := fmt.Sprintf("sprunner-pprof-%s.pprof", time.Now().Format(time.RFC3339))
+		file, err := os.Create(filename)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		pprof.StartCPUProfile(file)
+		defer pprof.StopCPUProfile()
+	}
+
 	if err := mainImpl(os.Args[1:]); err != nil {
 		log.Fatal(err)
 	}
@@ -83,7 +98,7 @@ type Subscreen struct {
 	screen tcell.Screen
 	count  int
 	index  int
-	lines []string
+	lines  []string
 }
 
 func NewSubscreen(screen tcell.Screen, count int, index int) *Subscreen {
@@ -91,7 +106,7 @@ func NewSubscreen(screen tcell.Screen, count int, index int) *Subscreen {
 		screen: screen,
 		count:  count,
 		index:  index,
-		lines: []string{},
+		lines:  []string{},
 	}
 }
 
@@ -121,7 +136,7 @@ func (s *Subscreen) Write(bytes []byte) (n int, err error) {
 			if col >= width {
 				break
 			}
-			s.screen.SetContent(startX + col, startY + row, r, []rune{}, tcell.StyleDefault)
+			s.screen.SetContent(startX+col, startY+row, r, []rune{}, tcell.StyleDefault)
 		}
 	}
 	s.screen.Show()
@@ -150,7 +165,6 @@ func (s *Subscreen) Subregion() (int, int, int, int) {
 
 	return xStart, 0, xEnd, height
 }
-
 
 func renderString(screen tcell.Screen, s string) {
 	for i, r := range s {
